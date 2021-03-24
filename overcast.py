@@ -1,9 +1,26 @@
+#!/usr/bin/env python3
+
 import sys
 import requests
 import click
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 import settings
+
+import logging
+
+# try:
+#     import http.client as http_client
+# except ImportError:
+#     # Python 2
+#     import httplib as http_client
+# http_client.HTTPConnection.debuglevel = 1
+#
+# logging.basicConfig()
+# logging.getLogger().setLevel(logging.DEBUG)
+# requests_log = logging.getLogger("requests.packages.urllib3")
+# requests_log.setLevel(logging.DEBUG)
+# requests_log.propagate = True
 
 
 @click.group()
@@ -11,29 +28,58 @@ def cli():
     pass
 
 
-@click.command()
+@cli.command()
+@click.argument("username")
+@click.argument("password")
 def login(username, password):
-    r = requests.post('https://overcast.fm/login', headers={
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Cookie': 'o=%s' % settings.OVERCAST_COOKIE
-    })
+    r = requests.post('https://overcast.fm/login',
+                      data={
+                          'then': 'podcasts',
+                          'email': username,
+                          'password': password
+                      },
+                      allow_redirects=False)
+
+    cookies = dict(r.cookies)
+    settings.update_key("OVERCAST_COOKIE", "%s" % cookies['o'])
 
 
-
-@click.command()
-def episodes(itunes_id):
-    r = requests.get('https://overcast.fm/itunes%s' % itunes_id, headers={
+@cli.command()
+@click.argument("show_url")
+def episodes(show_url):
+    r = requests.get('https://overcast.fm/%s' % show_url, headers={
         'Cookie': 'o=%s' % settings.OVERCAST_COOKIE
     })
 
     epidex = BeautifulSoup(r.text, 'lxml')
-    print(epidex)
+    # print(epidex)
+
+    episodes = []
     for tag in epidex.find_all('h2'):
-        print(tag)
+        if tag['class'] == ['margintop05', 'marginbottom0']:
+            for next_epi in tag.next_siblings:
+                if isinstance(next_epi, Tag):
+                    episode = {}
+                    episode_link = next_epi.findAll("a")
+                    title_tag = next_epi.findAll("div", {"class": "title singleline"})
+                    caption_tag = next_epi.findAll("div", {"class": "caption2 singleline"})
+                    description_tag = next_epi.findAll("div", {"class": "lighttext margintop05"})
+
+                    if len(episode_link) == 1:
+                        episode['link'] = episode_link[0]['href']
+                    if len(title_tag) == 1:
+                        episode['title'] = title_tag[0].string.strip()
+                    if len(caption_tag) == 1:
+                        episode['caption'] = caption_tag[0].string.strip()
+                    if len(description_tag) == 1:
+                        episode['description'] = description_tag[0].string.strip()
+                    episodes.append(episode)
+    import pprint
+    pprint.pprint(episodes)
+    return episodes
 
 
-@click.command()
+@cli.command()
 def podcasts():
     r = requests.get('https://overcast.fm/podcasts', headers={
         'Cookie': 'o=%s' % settings.OVERCAST_COOKIE
@@ -61,6 +107,8 @@ def podcasts():
 
                     podcasts.append(podcast)
 
+    import pprint
+    pprint.pprint(podcasts)
     return podcasts
 
 
