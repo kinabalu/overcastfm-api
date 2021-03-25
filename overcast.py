@@ -1,13 +1,7 @@
-#!/usr/bin/env python3
-
-import sys
 import requests
-import click
 from bs4 import BeautifulSoup, Tag
 
 import settings
-
-import pprint
 
 import logging
 
@@ -25,14 +19,6 @@ import logging
 # requests_log.propagate = True
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command()
-@click.argument("username")
-@click.argument("password")
 def login(username, password):
     r = requests.post('https://overcast.fm/login',
                       data={
@@ -46,10 +32,7 @@ def login(username, password):
     settings.update_key("OVERCAST_COOKIE", "%s" % cookies['o'])
 
 
-@cli.command()
-@click.argument("episode_id")
-@click.option("-v", "--verbose", is_flag=True)
-def episode(episode_id, verbose=False):
+def episode(episode_id):
     r = requests.get('https://overcast.fm/%s' % episode_id, headers={
         'Cookie': 'o=%s' % settings.OVERCAST_COOKIE
     })
@@ -91,16 +74,10 @@ def episode(episode_id, verbose=False):
 
     episode['episode_website'] = episode_website
 
-    if verbose:
-        pprint.pprint(episode)
-
     return episode
 
 
-@cli.command()
-@click.argument("show_url")
-@click.option("-v", "--verbose", is_flag=True)
-def episodes(show_url, verbose=False):
+def episodes(show_url):
     """
     Get all episodes for a given show URL
 
@@ -156,14 +133,10 @@ def episodes(show_url, verbose=False):
                     if episode:
                         episodes.append(episode)
 
-    if verbose:
-        pprint.pprint(podcast)
     return podcast
 
 
-@cli.command()
-@click.option("-v", "--verbose", is_flag=True)
-def podcasts(verbose=False):
+def podcasts():
     r = requests.get('https://overcast.fm/podcasts', headers={
         'Cookie': 'o=%s' % settings.OVERCAST_COOKIE
     })
@@ -190,10 +163,4 @@ def podcasts(verbose=False):
 
                     podcasts.append(podcast)
 
-    if verbose:
-        pprint.pprint(podcasts)
     return podcasts
-
-
-if __name__ == '__main__':
-    cli()
