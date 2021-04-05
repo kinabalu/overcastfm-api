@@ -116,13 +116,14 @@ def episodes(show_url):
             for next_epi in tag.next_siblings:
                 if isinstance(next_epi, Tag):
                     episode = {}
-                    episode_link = next_epi.findAll("a")
+
+                    if 'href' in next_epi.attrs:
+                        episode['link'] = next_epi.attrs['href'][1:]
+
                     title_tag = next_epi.findAll("div", {"class": "title singleline"})
                     caption_tag = next_epi.findAll("div", {"class": "caption2 singleline"})
                     description_tag = next_epi.findAll("div", {"class": "lighttext margintop05"})
 
-                    if len(episode_link) == 1:
-                        episode['link'] = episode_link[0]['href']
                     if len(title_tag) == 1:
                         episode['title'] = title_tag[0].string.strip()
                     if len(caption_tag) == 1:
@@ -153,7 +154,10 @@ def podcasts():
                     podcast_count += 1
                     podcast_href = next_podcast['href']
 
-                    podcast['href'] = podcast_href
+                    podcast['href'] = podcast_href[1:]
+
+                    if podcast['href'] == 'uploads':
+                        continue
 
                     art_img = next_podcast.findAll("img")
                     title_tag = next_podcast.findAll("div", {"class": "title"})
